@@ -1,26 +1,29 @@
-import { BrowserRouter, Switch, Route, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Switch, Route } from 'react-router-dom';
+import { Socket } from 'socket.io-client';
+import { Room } from './pages/room';
+import { Home } from './pages/home';
+import { initSocketConn } from './socket/index';
 
 const App = (): JSX.Element => {
+  const [socket, setSocket] = useState<Socket>();
+
+  useEffect(() => {
+    setSocket(initSocketConn());
+
+    return () => {
+      socket?.disconnect();
+    };
+  }, []);
+
   return (
     <BrowserRouter>
-      <nav>
-        <ul>
-          <li>
-            <Link to="/">Home</Link>
-          </li>
-          <li>
-            <Link to="/rooms">Rooms</Link>
-          </li>
-        </ul>
-      </nav>
-      <Switch>
-        <Route path="/rooms">
-          <div>HERE ROOMS2</div>
-        </Route>
-        <Route path="/">
-          <div>HELLOW</div>
-        </Route>
-      </Switch>
+      <div>
+        <Switch>
+          <Route path="/rooms/:roomId" render={(props) => <Room {...props} socket={socket} />} />
+          <Route path="/" component={Home} />
+        </Switch>
+      </div>
     </BrowserRouter>
   );
 };

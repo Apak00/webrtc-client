@@ -4,6 +4,17 @@ const path = require('path');
 
 module.exports = {
   entry: './index.tsx',
+  devServer: {
+    host: '0.0.0.0',
+    // Enable compression
+    compress: true,
+    // Enable hot reloading
+    hot: true,
+
+    port: 8080,
+
+    historyApiFallback: true,
+  },
   module: {
     rules: [
       {
@@ -34,11 +45,13 @@ module.exports = {
   },
   output: {
     filename: 'index.js',
-    path: path.resolve(__dirname, 'react-build'),
+    path: path.resolve(__dirname, '/react-build'),
+    publicPath: '/',
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: path.join(__dirname, 'index.html'),
+      inject: true,
+      template: path.join(__dirname, '/index.html'),
     }),
   ],
   resolve: {

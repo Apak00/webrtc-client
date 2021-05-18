@@ -23,6 +23,8 @@
   "plugins": ["react", "@typescript-eslint"],
   "ignorePatterns": ["*config*", "build/*", "dist/*", "react-build/*", "main.js", "preload.js"],
   "rules": {
+    "import/prefer-default-export": "off",
+    "react/jsx-props-no-spreading": "off",
     "react/react-in-jsx-scope": "off",
     "no-unused-vars": "error"
   }
