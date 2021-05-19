@@ -1,23 +1,23 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable no-console */
 /* eslint-disable jsx-a11y/media-has-caption */
 import { useEffect, useRef, useState } from 'react';
 import { RouteComponentProps, useParams } from 'react-router-dom';
-import { Socket } from 'socket.io-client';
 import { joinRoom, sendIceCandidate } from '../../socket';
 import { iceConfig, mediaConstraints } from '../../socket/config';
+import { AppSocket } from '../../socket/events';
 
 interface RouteParams {
   roomId: string;
 }
 interface Props extends RouteComponentProps<RouteParams> {
-  socket: Socket | undefined;
+  socket: AppSocket | undefined;
 }
 
 export const Room = ({ socket }: Props): JSX.Element => {
   const { roomId } = useParams<RouteParams>();
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const [localStream, setLocalStream] = useState<MediaStream>();
   const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
-  const itemEls = useRef<HTMLVideoElement[]>([]);
 
   const addNewStream = (newRemoteStream: MediaStream) => {
     if (newRemoteStream) {
@@ -33,35 +33,61 @@ export const Room = ({ socket }: Props): JSX.Element => {
           if (localVideoRef.current) localVideoRef.current.srcObject = stream;
           joinRoom({ stream, roomId, addNewStream });
 
-          setLocalStream(stream);
-
           return true;
         })
         .catch(console.error);
 
-      socket.on('user:connected', async ({ offer, socketId }) => {
-        const rc = new RTCPeerConnection(iceConfig);
-        rc.onicecandidate = sendIceCandidate(socketId);
-        rc.ontrack = (e: any) => {
-          console.log('AHOY', JSON.stringify(e.streams));
+      socket.on('bc:negotiation:offer', ({ sdp, negotiatioterSocketId }) => {
+        const negRC = new RTCPeerConnection(iceConfig);
+        negRC.onicecandidate = sendIceCandidate(roomId);
+        negRC.ontrack = (e: any) => {
           addNewStream(e.streams[0]);
         };
+        negRC.onnegotiationneeded = () => {
+          negRC
+            .createOffer()
+            .then((newOffer) => {
+              return negRC.setLocalDescription(newOffer);
+            })
+            .then(() => {
+              socket.emit('negotiation:offer', {
+                roomId,
+                sdp: negRC.localDescription,
+              });
 
-        rc.setRemoteDescription(offer);
+              return true;
+            })
+            .catch(console.error);
+        };
+        const desc = new RTCSessionDescription(sdp);
 
-        localStream?.getTracks().forEach((track) => {
-          rc.addTrack(track);
-        });
+        negRC
+          .setRemoteDescription(desc)
+          .then(() => {
+            return navigator.mediaDevices.getUserMedia(mediaConstraints);
+          })
+          .then((stream) => {
+            if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-        rc.createAnswer()
+            stream.getTracks().forEach((track) => negRC.addTrack(track, stream));
+
+            return true;
+          })
+          .then(() => {
+            return negRC.createAnswer();
+          })
           .then((answer) => {
-            rc.setLocalDescription(answer);
-
-            socket.emit('user:answered', { socketId, answer });
+            return negRC.setLocalDescription(answer);
+          })
+          .then(() => {
+            socket.emit('negotiation:answer', { sdp: negRC.localDescription, negotiatioterSocketId });
 
             return true;
           })
           .catch(console.error);
+        socket.on('bc:icecandidate', ({ candidate }) => {
+          if (candidate) negRC.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
+        });
       });
     }
   }, [socket, roomId]);
@@ -72,16 +98,17 @@ export const Room = ({ socket }: Props): JSX.Element => {
       <div>
         <div>
           local:
-          <video ref={localVideoRef} />
+          <video ref={localVideoRef} autoPlay muted />
         </div>
         <div>
-          {remoteStreams.map((s: MediaStream, index) => {
+          {remoteStreams.map((s: MediaStream) => {
             return (
               <div key={s.id}>
                 <video
                   ref={(videoRef) => {
-                    if (videoRef) itemEls.current[index] = videoRef;
+                    if (videoRef) videoRef.srcObject = s;
                   }}
+                  autoPlay
                 />
               </div>
             );

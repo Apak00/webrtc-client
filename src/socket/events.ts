@@ -12,18 +12,19 @@ interface Success<T> {
 export type Response<T> = Error | Success<T>;
 
 export interface ServerEvents {
-  'room:disconnected': (room: Omit<Room, 'id'>) => void;
-  'room:connected': (room: { roomId: string }) => void;
-  'user:connected': (payload: { roomId: string; offer: any; socketId: string }) => void;
-  'user:answered:forward': (payload: { answer: any }) => void;
-  'ice:candidate:forward': (payload: { candidate: any }) => void;
+  'bc:offer': (payload: { roomId: string; offer: any; offererSocketId: string }) => void;
+  'answer:forward': (payload: { answer: any }) => void;
+  'bc:icecandidate': (payload: { candidate: RTCIceCandidate }) => void;
+  'bc:negotiation:offer': (payload: { sdp: any; negotiatioterSocketId: string }) => void;
+  'negotiation:answer:forward': (payload: { sdp: any }) => void;
 }
 
 export interface ClientEvents {
   'room:create': (payload: Omit<Room, 'id'>, callback: (res: string) => void) => void;
-  'room:join': (payload: { roomId: string; offer: any }) => void;
-  'user:answered': (payload: { socketId: string; answer: any }) => void;
-  'ice:candidate': (payload: { socketId?: string; candidate: any }) => void;
+  'join:room': (payload: { roomId: string }) => void;
+  'ice:candidate': (payload: { candidate: any; roomId: string }) => void;
+  'negotiation:offer': (payload: { roomId: string; sdp: any }) => void;
+  'negotiation:answer': (payload: { negotiatioterSocketId: string; sdp: any }) => void;
 }
 
 export type AppSocket = Socket<ServerEvents, ClientEvents>;

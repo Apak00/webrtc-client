@@ -5,9 +5,6 @@ const path = require('path');
 module.exports = {
   entry: './index.tsx',
   devServer: {
-    host: '0.0.0.0',
-    // Enable compression
-    compress: true,
     // Enable hot reloading
     hot: true,
 
