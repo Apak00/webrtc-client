@@ -16,6 +16,9 @@
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
+  "engines": {
+    "node": "v14.16.0"
+  },
   "dependencies": {
     "electron-is-dev": "^2.0.0",
     "express": "^4.17.1",
