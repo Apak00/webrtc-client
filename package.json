@@ -8,7 +8,7 @@
   "scripts": {
     "start:web": "webpack serve --mode development",
     "build": "webpack --mode production",
-    "heroku": "webpack --mode production && node server.js",
+    "serve": "node server.js",
     "lint": "eslint . --ext jsx,ts,tsx",
     "start:electron": "electron .",
     "start": "concurrently \"npm run start:web\" \"wait-on http://localhost:8080 && electron .\"",
