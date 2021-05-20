@@ -44,7 +44,7 @@ module.exports = {
   },
   output: {
     filename: 'index.js',
-    path: path.resolve(__dirname, '/react-build'),
+    path: path.resolve(__dirname, 'dist'),
     publicPath: '/',
   },
   plugins: [

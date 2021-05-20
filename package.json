@@ -12,8 +12,7 @@
     "lint": "eslint . --ext jsx,ts,tsx",
     "start:electron": "electron .",
     "start": "concurrently \"npm run start:web\" \"wait-on http://localhost:8080 && electron .\"",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
+    "installers": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "engines": {
@@ -66,6 +65,9 @@
     "appId": "app.id",
     "mac": {
       "category": "your.app.category.type"
+    },
+    "directories": {
+      "output": "installers"
     }
   }
 }
