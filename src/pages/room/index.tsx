@@ -6,6 +6,7 @@ import { RouteComponentProps, useParams } from 'react-router-dom';
 import { joinRoom, sendIceCandidate } from '../../socket';
 import { iceConfig, mediaConstraints } from '../../socket/config';
 import { AppSocket } from '../../socket/events';
+import './style.css';
 
 interface RouteParams {
   roomId: string;
@@ -98,7 +99,9 @@ export const Room = ({ socket }: Props): JSX.Element => {
       <div>
         <div>
           local:
-          <video ref={localVideoRef} autoPlay muted />
+          <div>
+            <video ref={localVideoRef} autoPlay muted />
+          </div>
         </div>
         <div>
           {remoteStreams.map((s: MediaStream) => {

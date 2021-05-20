@@ -14,7 +14,11 @@ export const sendIceCandidate =
   };
 
 export const initSocketConn = (): AppSocket => {
-  socket = io('http://localhost:3000');
+  socket = io('https://webrtc-server1.herokuapp.com/', {
+    path: '/socket.io',
+    transports: ['websocket'],
+    secure: true,
+  });
 
   socket.on('answer:forward', ({ answer }) => {
     lc.setRemoteDescription(answer);
