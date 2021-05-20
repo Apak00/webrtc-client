@@ -14,10 +14,11 @@ export const sendIceCandidate =
   };
 
 export const initSocketConn = (): AppSocket => {
-  socket = io('https://webrtc-server1.herokuapp.com/', {
+  socket = io('https://webrtc-server-one.herokuapp.com/', {
     path: '/socket.io',
     transports: ['websocket'],
     secure: true,
+    withCredentials: true,
   });
 
   socket.on('answer:forward', ({ answer }) => {

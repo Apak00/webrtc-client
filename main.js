@@ -13,7 +13,7 @@ function createWindow() {
     },
   });
 
-  const startURL = isDev ? 'http://localhost:8080' : `file://${path.join(__dirname, '../react-build/index.html')}`;
+  const startURL = isDev ? 'http://localhost:8080' : `file://${path.join(__dirname, '../dist/index.html')}`;
 
   // and load the index.html of the app.
   mainWindow.loadURL(startURL);
