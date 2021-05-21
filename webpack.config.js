@@ -2,7 +2,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const path = require('path');
 
-module.exports = {
+module.exports = (env) => ({
   entry: './index.tsx',
   devServer: {
     https: true,
@@ -45,7 +45,7 @@ module.exports = {
   output: {
     filename: 'index.js',
     path: path.resolve(__dirname, 'dist'),
-    publicPath: '/',
+    publicPath: env.dev ? '/' : './',
   },
   plugins: [
     new HtmlWebpackPlugin({
@@ -56,4 +56,4 @@ module.exports = {
   resolve: {
     extensions: ['.js', '.jsx', '.tsx', '.ts'],
   },
-};
+});

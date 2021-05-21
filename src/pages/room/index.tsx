@@ -2,11 +2,13 @@
 /* eslint-disable no-console */
 /* eslint-disable jsx-a11y/media-has-caption */
 import { useEffect, useRef, useState } from 'react';
-import { RouteComponentProps, useParams } from 'react-router-dom';
+import { Link, RouteComponentProps, useParams } from 'react-router-dom';
+import isElectron from 'is-electron';
 import { joinRoom, sendIceCandidate } from '../../socket';
 import { iceConfig, mediaConstraints } from '../../socket/config';
 import { AppSocket } from '../../socket/events';
 import './style.css';
+import { Participant } from './types';
 
 interface RouteParams {
   roomId: string;
@@ -18,13 +20,7 @@ interface Props extends RouteComponentProps<RouteParams> {
 export const Room = ({ socket }: Props): JSX.Element => {
   const { roomId } = useParams<RouteParams>();
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
-
-  const addNewStream = (newRemoteStream: MediaStream) => {
-    if (newRemoteStream) {
-      setRemoteStreams([...remoteStreams, newRemoteStream]);
-    }
-  };
+  const [participants, setParticipants] = useState<{ [k: string]: Participant }>({});
 
   useEffect(() => {
     if (socket && roomId) {
@@ -32,7 +28,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
         .getUserMedia(mediaConstraints)
         .then((stream) => {
           if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-          joinRoom({ stream, roomId, addNewStream });
+          joinRoom({ stream, roomId, setParticipants });
 
           return true;
         })
@@ -42,7 +38,10 @@ export const Room = ({ socket }: Props): JSX.Element => {
         const negRC = new RTCPeerConnection(iceConfig);
         negRC.onicecandidate = sendIceCandidate(roomId);
         negRC.ontrack = (e: any) => {
-          addNewStream(e.streams[0]);
+          setParticipants((prevPart) => ({
+            ...prevPart,
+            [negotiatioterSocketId]: { ...prevPart[negotiatioterSocketId], stream: e.streams[0] },
+          }));
         };
         negRC.onnegotiationneeded = () => {
           negRC
@@ -60,12 +59,54 @@ export const Room = ({ socket }: Props): JSX.Element => {
             })
             .catch(console.error);
         };
+        negRC.onconnectionstatechange = () => {
+          switch (negRC.connectionState) {
+            case 'connected':
+              setParticipants((prevPart) =>
+                prevPart[negotiatioterSocketId] ? prevPart : { ...prevPart, [negotiatioterSocketId]: {} }
+              );
+              break;
+            case 'disconnected':
+            case 'failed':
+            case 'closed':
+              setParticipants((prevPart) => {
+                const newPart: any = {};
+                Object.keys(prevPart).forEach((key) => {
+                  if (key !== negotiatioterSocketId) {
+                    newPart[key] = prevPart[key];
+                  }
+                });
+                return newPart;
+              });
+              break;
+            default:
+              break;
+          }
+        };
         const desc = new RTCSessionDescription(sdp);
-
         negRC
           .setRemoteDescription(desc)
-          .then(() => {
-            return navigator.mediaDevices.getUserMedia(mediaConstraints);
+          .then(async () => {
+            let streamPromise: Promise<MediaStream>;
+            if (isElectron()) {
+              const constraints = {
+                audio: {
+                  mandatory: {
+                    chromeMediaSource: 'desktop',
+                  },
+                },
+                video: {
+                  mandatory: {
+                    chromeMediaSource: 'desktop',
+                  },
+                },
+              };
+              streamPromise = navigator.mediaDevices.getUserMedia(constraints as any);
+            } else {
+              streamPromise = navigator.mediaDevices.getUserMedia(mediaConstraints);
+            }
+
+            return streamPromise;
           })
           .then((stream) => {
             if (localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -91,32 +132,33 @@ export const Room = ({ socket }: Props): JSX.Element => {
         });
       });
     }
-  }, [socket, roomId]);
+  }, []);
 
   return (
     <div>
-      ROOM: {roomId}
       <div>
+        <Link to="/">HOME</Link>
+      </div>
+      <div>ROOM: {roomId}</div>
+      <div>
+        local:
         <div>
-          local:
-          <div>
-            <video ref={localVideoRef} autoPlay muted />
-          </div>
+          <video ref={localVideoRef} autoPlay muted />
         </div>
-        <div>
-          {remoteStreams.map((s: MediaStream) => {
-            return (
-              <div key={s.id}>
-                <video
-                  ref={(videoRef) => {
-                    if (videoRef) videoRef.srcObject = s;
-                  }}
-                  autoPlay
-                />
-              </div>
-            );
-          })}
-        </div>
+      </div>
+      <div>
+        {Object.entries(participants).map(([sid, participant]: [string, Participant]) => {
+          return (
+            <div key={sid}>
+              <video
+                ref={(videoRef) => {
+                  if (videoRef && participant.stream) videoRef.srcObject = participant.stream;
+                }}
+                autoPlay
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

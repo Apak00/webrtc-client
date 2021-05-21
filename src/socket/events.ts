@@ -12,8 +12,6 @@ interface Success<T> {
 export type Response<T> = Error | Success<T>;
 
 export interface ServerEvents {
-  'bc:offer': (payload: { roomId: string; offer: any; offererSocketId: string }) => void;
-  'answer:forward': (payload: { answer: any }) => void;
   'bc:icecandidate': (payload: { candidate: RTCIceCandidate }) => void;
   'bc:negotiation:offer': (payload: { sdp: any; negotiatioterSocketId: string }) => void;
   'negotiation:answer:forward': (payload: { sdp: any }) => void;
