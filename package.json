@@ -6,9 +6,9 @@
   "license": "ISC",
   "main": "./main.js",
   "scripts": {
-    "start": "webpack serve --env dev --mode development",
-    "build": "webpack --env prod --mode production",
-    "build:electron": "webpack --env prod --mode production --target=electron-renderer",
+    "start": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "build:electron": "webpack --env electron --mode production --target=electron-renderer",
     "serve": "node server.js",
     "lint": "eslint . --ext jsx,ts,tsx",
     "electron": "electron .",

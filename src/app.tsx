@@ -20,10 +20,7 @@ const App = (): JSX.Element => {
     <BrowserRouter>
       <div>
         <Switch>
-          <Route
-            path="/rooms/:roomId"
-            render={(props) => (socket ? <Room {...props} socket={socket} /> : 'loading...')}
-          />
+          <Route path="/rooms/:roomId" render={(props) => <Room {...props} socket={socket} />} />
           <Route path="/" component={Home} />
         </Switch>
       </div>
