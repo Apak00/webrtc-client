@@ -1,10 +1,11 @@
+/* eslint-disable compat/compat */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-console */
 /* eslint-disable jsx-a11y/media-has-caption */
 import { useEffect, useRef, useState } from 'react';
 import { Link, RouteComponentProps, useParams } from 'react-router-dom';
 import isElectron from 'is-electron';
-import { joinRoom, sendIceCandidate } from '../../socket';
+import { sendIceCandidate } from '../../socket';
 import { iceConfig, mediaConstraints } from '../../socket/config';
 import { AppSocket } from '../../socket/events';
 import './style.css';
@@ -14,33 +15,109 @@ interface RouteParams {
   roomId: string;
 }
 interface Props extends RouteComponentProps<RouteParams> {
-  socket: AppSocket | undefined;
+  socket: AppSocket;
 }
 
 export const Room = ({ socket }: Props): JSX.Element => {
   const { roomId } = useParams<RouteParams>();
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [participants, setParticipants] = useState<{ [k: string]: Participant }>({});
+  const [pendingPeers, setPendingPeers] = useState<{ [k: string]: RTCPeerConnection }>({});
+
+  const joinRoom = (stream: MediaStream): void => {
+    socket.emit('join:room', { roomId });
+    socket.on('join:room:response', ({ alreadyConnectedSids }) => {
+      alreadyConnectedSids.forEach((sid) => {
+        const lc = new RTCPeerConnection(iceConfig);
+        lc.onicecandidate = sendIceCandidate(sid);
+        lc.ontrack = (e) => {
+          setParticipants((prevPart) => ({
+            ...prevPart,
+            [sid]: { ...prevPart[sid], stream: e.streams[0] },
+          }));
+        };
+        stream.getTracks().forEach((track) => {
+          lc.addTrack(track, stream);
+        });
+        lc.onnegotiationneeded = () => {
+          lc.createOffer()
+            .then((newOffer) => {
+              return lc.setLocalDescription(newOffer);
+            })
+            .then(() => {
+              socket.emit('offer', {
+                offerieSid: sid,
+                sdp: lc.localDescription,
+              });
+
+              return true;
+            })
+            .then(() => {
+              setPendingPeers((prevPendings) => ({ ...prevPendings, [sid]: lc }));
+
+              return true;
+            })
+            .catch(console.error);
+        };
+        lc.onconnectionstatechange = () => {
+          switch (lc.connectionState) {
+            case 'connected':
+              setParticipants((prevPart) =>
+                prevPart[sid] ? prevPart : { ...prevPart, [sid]: { peer: pendingPeers[sid] } }
+              );
+              break;
+            case 'disconnected':
+            case 'failed':
+            case 'closed':
+              setParticipants((prevPart) => {
+                const newPart: any = {};
+                Object.keys(prevPart).forEach((key) => {
+                  if (key !== sid) {
+                    newPart[key] = prevPart[key];
+                  }
+                });
+                return newPart;
+              });
+              break;
+            default:
+              break;
+          }
+        };
+      });
+
+      socket.on('answer:forward', ({ sdp, answererSid }) => {
+        const desc = new RTCSessionDescription(sdp);
+        setPendingPeers((prevPendings) => {
+          const newPendings = { ...prevPendings };
+          if (!newPendings[answererSid].remoteDescription && !newPendings[answererSid].pendingRemoteDescription) {
+            newPendings[answererSid].setRemoteDescription(desc);
+          }
+
+          return newPendings;
+        });
+      });
+    });
+  };
 
   useEffect(() => {
-    if (socket && roomId) {
+    if (roomId) {
       navigator.mediaDevices
         .getUserMedia(mediaConstraints)
         .then((stream) => {
           if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-          joinRoom({ stream, roomId, setParticipants });
+          joinRoom(stream);
 
           return true;
         })
         .catch(console.error);
 
-      socket.on('bc:negotiation:offer', ({ sdp, negotiatioterSocketId }) => {
+      socket.on('offer:forward', ({ sdp, offererSid }) => {
         const negRC = new RTCPeerConnection(iceConfig);
-        negRC.onicecandidate = sendIceCandidate(roomId);
+        negRC.onicecandidate = sendIceCandidate(offererSid);
         negRC.ontrack = (e: any) => {
           setParticipants((prevPart) => ({
             ...prevPart,
-            [negotiatioterSocketId]: { ...prevPart[negotiatioterSocketId], stream: e.streams[0] },
+            [offererSid]: { ...prevPart[offererSid], stream: e.streams[0] },
           }));
         };
         negRC.onnegotiationneeded = () => {
@@ -50,8 +127,8 @@ export const Room = ({ socket }: Props): JSX.Element => {
               return negRC.setLocalDescription(newOffer);
             })
             .then(() => {
-              socket.emit('negotiation:offer', {
-                roomId,
+              socket.emit('offer', {
+                offerieSid: offererSid,
                 sdp: negRC.localDescription,
               });
 
@@ -63,22 +140,22 @@ export const Room = ({ socket }: Props): JSX.Element => {
           switch (negRC.connectionState) {
             case 'connected':
               setParticipants((prevPart) =>
-                prevPart[negotiatioterSocketId] ? prevPart : { ...prevPart, [negotiatioterSocketId]: {} }
+                prevPart[offererSid] ? prevPart : { ...prevPart, [offererSid]: { peer: negRC } }
               );
               break;
             case 'disconnected':
             case 'failed':
+            case 'closed':
               setParticipants((prevPart) => {
                 const newPart: any = {};
                 Object.keys(prevPart).forEach((key) => {
-                  if (key !== negotiatioterSocketId) {
+                  if (key !== offererSid) {
                     newPart[key] = prevPart[key];
                   }
                 });
                 return newPart;
               });
               break;
-            case 'closed':
             default:
               break;
           }
@@ -89,7 +166,6 @@ export const Room = ({ socket }: Props): JSX.Element => {
           .then(async () => {
             let streamPromise: Promise<MediaStream>;
             if (isElectron()) {
-              console.log('ELECTRONMEDIA');
               const constraints = {
                 audio: {
                   mandatory: {
@@ -104,8 +180,6 @@ export const Room = ({ socket }: Props): JSX.Element => {
               };
               streamPromise = navigator.mediaDevices.getUserMedia(constraints as any);
             } else {
-              console.log('NOT ELE');
-
               streamPromise = navigator.mediaDevices.getUserMedia(mediaConstraints);
             }
 
@@ -125,24 +199,24 @@ export const Room = ({ socket }: Props): JSX.Element => {
             return negRC.setLocalDescription(answer);
           })
           .then(() => {
-            socket.emit('negotiation:answer', { sdp: negRC.localDescription, negotiatioterSocketId });
+            socket.emit('answer', { sdp: negRC.localDescription, offererSid });
 
             return true;
           })
           .catch(console.error);
-        socket.on('bc:icecandidate', ({ candidate }) => {
+        socket.on('ice:candidate:forward', ({ candidate }) => {
           if (candidate) negRC.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
         });
       });
     }
   }, []);
-
   return (
     <div>
       <div>
         <Link to="/">HOME</Link>
       </div>
       <div>ROOM: {roomId}</div>
+      <div>ID: {socket.id}</div>
       <div>
         local:
         <div>
