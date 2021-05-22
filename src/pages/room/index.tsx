@@ -68,7 +68,6 @@ export const Room = ({ socket }: Props): JSX.Element => {
               break;
             case 'disconnected':
             case 'failed':
-            case 'closed':
               setParticipants((prevPart) => {
                 const newPart: any = {};
                 Object.keys(prevPart).forEach((key) => {
@@ -79,6 +78,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
                 return newPart;
               });
               break;
+            case 'closed':
             default:
               break;
           }
@@ -89,6 +89,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
           .then(async () => {
             let streamPromise: Promise<MediaStream>;
             if (isElectron()) {
+              console.log('ELECTRONMEDIA');
               const constraints = {
                 audio: {
                   mandatory: {
@@ -103,6 +104,8 @@ export const Room = ({ socket }: Props): JSX.Element => {
               };
               streamPromise = navigator.mediaDevices.getUserMedia(constraints as any);
             } else {
+              console.log('NOT ELE');
+
               streamPromise = navigator.mediaDevices.getUserMedia(mediaConstraints);
             }
 

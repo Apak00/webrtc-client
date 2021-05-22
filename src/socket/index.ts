@@ -55,7 +55,6 @@ export const joinRoom = ({
         break;
       case 'disconnected':
       case 'failed':
-      case 'closed':
         setParticipants((prevPart) => {
           const newPart: any = {};
           Object.keys(prevPart).forEach((key) => {
@@ -66,6 +65,7 @@ export const joinRoom = ({
           return newPart;
         });
         break;
+      case 'closed':
       default:
         break;
     }
