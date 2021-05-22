@@ -38,7 +38,6 @@ export const joinRoom = ({
   roomId: string;
   setParticipants: Dispatch<SetStateAction<{ [k: string]: Participant }>>;
 }): void => {
-  console.log('AHOY DEBUG');
   const lc = new RTCPeerConnection(iceConfig);
 
   socket?.emit('join:room', { roomId });
