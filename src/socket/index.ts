@@ -4,8 +4,8 @@ import { AppSocket } from './events';
 
 let socket: AppSocket;
 
-const socketURL = 'http://localhost:3000';
-// const socketURL = 'https://webrtc-server-one.herokuapp.com';
+// const socketURL = 'http://localhost:3000';
+const socketURL = 'https://webrtc-server-one.herokuapp.com';
 
 export const initSocketConn = (): AppSocket => {
   socket = io(socketURL, {
