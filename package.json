@@ -8,20 +8,19 @@
   "scripts": {
     "start": "webpack serve --mode development",
     "build": "webpack --mode production",
-    "build:electron": "webpack --env electron --mode production --target=electron-renderer",
     "serve": "node server.js",
     "lint": "eslint . --ext jsx,ts,tsx",
     "electron": "electron .",
-    "start:electron": "cross-env APP_ENV=dev concurrently \"npm run start\" \"wait-on https://webrtc-client1.herokuapp.com && electron .\"",
+    "start:electron": "cross-env APP_ENV=dev concurrently \"npm run start\" \"wait-on http://localhost:8080 && electron .\"",
     "installers": "electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "build:electron": "webpack --env electron --mode production --target=electron-renderer"
   },
   "engines": {
     "node": "v14.16.0"
   },
   "dependencies": {
     "cross-env": "^7.0.3",
-    "electron": "^12.0.9",
     "express": "^4.17.1",
     "is-electron": "^2.2.0",
     "react": "^17.0.2",
@@ -41,6 +40,7 @@
     "babel-loader": "^8.2.2",
     "concurrently": "^6.1.0",
     "css-loader": "^5.2.4",
+    "electron": "^12.0.9",
     "electron-builder": "^22.11.3",
     "eslint": "^7.26.0",
     "eslint-config-airbnb-typescript": "^12.3.1",
@@ -64,6 +64,14 @@
     "webpack-dev-server": "^3.11.2"
   },
   "build": {
+    "files": [
+      "dist/index.html",
+      "dist/index.js",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "productName": "app-name",
     "appId": "app.id",
     "mac": {
       "category": "your.app.category.type"

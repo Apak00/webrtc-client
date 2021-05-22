@@ -13,3 +13,17 @@ export const mediaConstraints = {
   video: true,
   audio: { echoCancellation: true },
 };
+
+// This is exactly what electron documentation recommends
+export const electronScreenSharingMC = {
+  audio: {
+    mandatory: {
+      chromeMediaSource: 'desktop',
+    },
+  },
+  video: {
+    mandatory: {
+      chromeMediaSource: 'desktop',
+    },
+  },
+};

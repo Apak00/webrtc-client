@@ -5,8 +5,6 @@ const path = require('path');
 module.exports = (env) => ({
   entry: './index.tsx',
   devServer: {
-    https: true,
-
     // Enable hot reloading
     hot: true,
 
@@ -55,5 +53,9 @@ module.exports = (env) => ({
   ],
   resolve: {
     extensions: ['.js', '.jsx', '.tsx', '.ts'],
+  },
+  node: {
+    __dirname: false,
+    __filename: false,
   },
 });

@@ -4,7 +4,6 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 import { useEffect, useRef, useState } from 'react';
 import { Link, RouteComponentProps, useParams } from 'react-router-dom';
-import isElectron from 'is-electron';
 import { sendIceCandidate } from '../../socket';
 import { iceConfig, mediaConstraints } from '../../socket/config';
 import { AppSocket } from '../../socket/events';
@@ -22,7 +21,9 @@ export const Room = ({ socket }: Props): JSX.Element => {
   const { roomId } = useParams<RouteParams>();
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [participants, setParticipants] = useState<{ [k: string]: Participant }>({});
-  const [pendingPeers, setPendingPeers] = useState<{ [k: string]: RTCPeerConnection }>({});
+  const pendingPeers2: React.MutableRefObject<{ [k: string]: RTCPeerConnection }> = useRef({});
+
+  const [isScreenSharing, setScreenSharing] = useState<boolean | undefined>();
 
   const joinRoom = (stream: MediaStream): void => {
     socket.emit('join:room', { roomId });
@@ -53,7 +54,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
               return true;
             })
             .then(() => {
-              setPendingPeers((prevPendings) => ({ ...prevPendings, [sid]: lc }));
+              pendingPeers2.current[sid] = lc;
 
               return true;
             })
@@ -62,9 +63,9 @@ export const Room = ({ socket }: Props): JSX.Element => {
         lc.onconnectionstatechange = () => {
           switch (lc.connectionState) {
             case 'connected':
-              setParticipants((prevPart) =>
-                prevPart[sid] ? prevPart : { ...prevPart, [sid]: { peer: pendingPeers[sid] } }
-              );
+              setParticipants((prevPart) => {
+                return { ...prevPart, [sid]: { ...prevPart[sid], peer: pendingPeers2.current[sid] } };
+              });
               break;
             case 'disconnected':
             case 'failed':
@@ -87,14 +88,11 @@ export const Room = ({ socket }: Props): JSX.Element => {
 
       socket.on('answer:forward', ({ sdp, answererSid }) => {
         const desc = new RTCSessionDescription(sdp);
-        setPendingPeers((prevPendings) => {
-          const newPendings = { ...prevPendings };
-          if (!newPendings[answererSid].remoteDescription && !newPendings[answererSid].pendingRemoteDescription) {
-            newPendings[answererSid].setRemoteDescription(desc);
-          }
-
-          return newPendings;
-        });
+        if (pendingPeers2.current[answererSid]) {
+          pendingPeers2.current[answererSid].setRemoteDescription(desc);
+        } else if (participants[answererSid]) {
+          participants[answererSid].peer?.setRemoteDescription(desc);
+        }
       });
     });
   };
@@ -112,36 +110,33 @@ export const Room = ({ socket }: Props): JSX.Element => {
         .catch(console.error);
 
       socket.on('offer:forward', ({ sdp, offererSid }) => {
-        const negRC = new RTCPeerConnection(iceConfig);
-        negRC.onicecandidate = sendIceCandidate(offererSid);
-        negRC.ontrack = (e: any) => {
+        const rc = new RTCPeerConnection(iceConfig);
+        rc.onicecandidate = sendIceCandidate(offererSid);
+        rc.ontrack = (e: any) => {
           setParticipants((prevPart) => ({
             ...prevPart,
             [offererSid]: { ...prevPart[offererSid], stream: e.streams[0] },
           }));
         };
-        negRC.onnegotiationneeded = () => {
-          negRC
-            .createOffer()
+        rc.onnegotiationneeded = () => {
+          rc.createOffer()
             .then((newOffer) => {
-              return negRC.setLocalDescription(newOffer);
+              return rc.setLocalDescription(newOffer);
             })
             .then(() => {
               socket.emit('offer', {
                 offerieSid: offererSid,
-                sdp: negRC.localDescription,
+                sdp: rc.localDescription,
               });
 
               return true;
             })
             .catch(console.error);
         };
-        negRC.onconnectionstatechange = () => {
-          switch (negRC.connectionState) {
+        rc.onconnectionstatechange = () => {
+          switch (rc.connectionState) {
             case 'connected':
-              setParticipants((prevPart) =>
-                prevPart[offererSid] ? prevPart : { ...prevPart, [offererSid]: { peer: negRC } }
-              );
+              setParticipants((prevPart) => ({ ...prevPart, [offererSid]: { ...prevPart[offererSid], peer: rc } }));
               break;
             case 'disconnected':
             case 'failed':
@@ -161,55 +156,82 @@ export const Room = ({ socket }: Props): JSX.Element => {
           }
         };
         const desc = new RTCSessionDescription(sdp);
-        negRC
-          .setRemoteDescription(desc)
+        rc.setRemoteDescription(desc)
           .then(async () => {
-            let streamPromise: Promise<MediaStream>;
-            if (isElectron()) {
-              const constraints = {
-                audio: {
-                  mandatory: {
-                    chromeMediaSource: 'desktop',
-                  },
-                },
-                video: {
-                  mandatory: {
-                    chromeMediaSource: 'desktop',
-                  },
-                },
-              };
-              streamPromise = navigator.mediaDevices.getUserMedia(constraints as any);
-            } else {
-              streamPromise = navigator.mediaDevices.getUserMedia(mediaConstraints);
-            }
-
-            return streamPromise;
+            return navigator.mediaDevices.getUserMedia(mediaConstraints);
           })
           .then((stream) => {
             if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-            stream.getTracks().forEach((track) => negRC.addTrack(track, stream));
+            stream.getTracks().forEach((track) => rc.addTrack(track, stream));
 
             return true;
           })
           .then(() => {
-            return negRC.createAnswer();
+            return rc.createAnswer();
           })
           .then((answer) => {
-            return negRC.setLocalDescription(answer);
+            return rc.setLocalDescription(answer);
           })
           .then(() => {
-            socket.emit('answer', { sdp: negRC.localDescription, offererSid });
+            socket.emit('answer', { sdp: rc.localDescription, offererSid });
 
             return true;
           })
           .catch(console.error);
         socket.on('ice:candidate:forward', ({ candidate }) => {
-          if (candidate) negRC.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
+          if (candidate) rc.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
         });
       });
     }
+
+    return () => {
+      Object.values(participants).forEach(({ peer }) => {
+        peer?.close();
+      });
+    };
   }, []);
+
+  useEffect(() => {
+    if (isScreenSharing) {
+      (navigator.mediaDevices as any)
+        .getDisplayMedia(mediaConstraints)
+        .then((stream: any) => {
+          if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+          return stream;
+        })
+        .then((stream: any) => {
+          Object.values(participants).forEach(({ peer }) => {
+            peer?.getSenders().forEach((sender) => {
+              peer?.removeTrack(sender);
+            });
+            stream.getTracks().forEach((track: any) => peer?.addTrack(track, stream));
+          });
+          return true;
+        })
+        .catch(console.error);
+    } else if (isScreenSharing === false) {
+      navigator.mediaDevices
+        .getUserMedia(mediaConstraints)
+        .then((stream) => {
+          if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+          return stream;
+        })
+        .then((stream) => {
+          Object.values(participants).forEach(({ peer }) => {
+            peer?.getSenders().forEach((sender) => {
+              peer?.removeTrack(sender);
+            });
+            stream.getTracks().forEach((track) => peer?.addTrack(track, stream));
+          });
+          return true;
+        })
+        .catch(console.error);
+    }
+  }, [isScreenSharing]);
+
   return (
     <div>
       <div>
@@ -218,12 +240,18 @@ export const Room = ({ socket }: Props): JSX.Element => {
       <div>ROOM: {roomId}</div>
       <div>ID: {socket.id}</div>
       <div>
+        <button type="button" onClick={() => setScreenSharing(!isScreenSharing)}>
+          toggle screen share
+        </button>
+        {isScreenSharing ? 'on' : 'off'}
+      </div>
+      <div>
         local:
         <div>
           <video ref={localVideoRef} autoPlay muted />
         </div>
       </div>
-      <div>
+      <div className="remotes-container">
         {Object.entries(participants).map(([sid, participant]: [string, Participant]) => {
           return (
             <div key={sid}>

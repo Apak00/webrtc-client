@@ -1,0 +1,15 @@
+.home-page {
+  height: 400px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+}
+.join-room-button {
+  display: flex;
+}
+
+.join-room-button input {
+  flex: 1;
+}

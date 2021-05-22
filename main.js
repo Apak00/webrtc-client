@@ -14,9 +14,7 @@ function createWindow() {
 
   const fromLocalDevServer = process.env.APP_ENV?.trim() === 'dev';
 
-  const startURL = fromLocalDevServer
-    ? 'https://webrtc-client1.herokuapp.com/'
-    : `file://${path.join(__dirname, 'dist/index.html')}`;
+  const startURL = fromLocalDevServer ? 'http://localhost:8080' : `file://${path.join(__dirname, 'dist/index.html')}`;
 
   // and load the index.html of the app.
   mainWindow.loadURL(startURL).then(
