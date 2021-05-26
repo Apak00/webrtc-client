@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, RouteComponentProps, useParams } from 'react-router-dom';
 import { sendIceCandidate } from '../../socket';
-import { iceConfig, mediaConstraints } from '../../socket/config';
+import { electronScreenSharingMC, iceConfig, mediaConstraints } from '../../socket/config';
 import { AppSocket } from '../../socket/events';
 import './style.css';
 import { Participant } from './types';
@@ -158,7 +158,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
         const desc = new RTCSessionDescription(sdp);
         rc.setRemoteDescription(desc)
           .then(async () => {
-            return navigator.mediaDevices.getUserMedia(mediaConstraints);
+            return navigator.mediaDevices.getUserMedia(electronScreenSharingMC as any);
           })
           .then((stream) => {
             if (localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -195,7 +195,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
   useEffect(() => {
     if (isScreenSharing) {
       (navigator.mediaDevices as any)
-        .getDisplayMedia(mediaConstraints)
+        .getUserMedia(electronScreenSharingMC as any)
         .then((stream: any) => {
           if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
