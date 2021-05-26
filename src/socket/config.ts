@@ -19,6 +19,7 @@ export const electronScreenSharingMC = {
   audio: {
     mandatory: {
       chromeMediaSource: 'desktop',
+      echoCancellation: true,
     },
   },
   video: {

@@ -11,7 +11,7 @@
     "serve": "node server.js",
     "lint": "eslint . --ext jsx,ts,tsx",
     "electron": "electron .",
-    "start:electron": "cross-env APP_ENV=dev concurrently \"npm run start\" \"wait-on http://localhost:8080 && electron .\"",
+    "start:electron": "cross-env APP_ENV=dev concurrently \"npm run start\" \"wait-on https://webrtc-client1.herokuapp.com && electron .\"",
     "installers": "electron-builder",
     "postinstall": "electron-builder install-app-deps",
     "build:electron": "webpack --env electron --mode production --target=electron-renderer"
