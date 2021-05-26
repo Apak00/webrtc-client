@@ -163,7 +163,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
           .then((stream) => {
             if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-            stream.getTracks().forEach((track) => rc.addTrack(track, stream));
+            stream.getTracks().forEach((track: any) => rc.addTrack(track, stream));
 
             return true;
           })
