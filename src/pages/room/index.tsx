@@ -158,7 +158,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
         const desc = new RTCSessionDescription(sdp);
         rc.setRemoteDescription(desc)
           .then(async () => {
-            return navigator.mediaDevices.getUserMedia(mediaConstraints as any);
+            return (navigator.mediaDevices as any).getDisplayMedia(mediaConstraints as any);
           })
           .then((stream) => {
             if (localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -195,7 +195,7 @@ export const Room = ({ socket }: Props): JSX.Element => {
   useEffect(() => {
     if (isScreenSharing) {
       (navigator.mediaDevices as any)
-        .getUserMedia(mediaConstraints as any)
+        .getDisplayMedia(mediaConstraints as any)
         .then((stream: any) => {
           if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
