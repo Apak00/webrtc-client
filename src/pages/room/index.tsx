@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, RouteComponentProps, useParams } from 'react-router-dom';
 import { sendIceCandidate } from '../../socket';
-import { electronScreenSharingMC, iceConfig, mediaConstraints } from '../../socket/config';
+import { iceConfig, mediaConstraints } from '../../socket/config';
 import { AppSocket } from '../../socket/events';
 import './style.css';
 import { Participant } from './types';
