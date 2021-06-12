@@ -2,6 +2,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
+app.commandLine.appendSwitch("use-fake-ui-for-media-stream");
+
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({

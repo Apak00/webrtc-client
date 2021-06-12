@@ -10,7 +10,7 @@ export const iceConfig = {
 };
 
 export const mediaConstraints = {
-  video: true,
+  video: false,
   audio: { echoCancellation: true },
 };
 
@@ -19,7 +19,6 @@ export const electronScreenSharingMC = {
   audio: {
     mandatory: {
       chromeMediaSource: 'desktop',
-      echoCancellation: true,
     },
   },
   video: {
